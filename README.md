@@ -58,7 +58,9 @@ go run .
 
 This command will start the LLM Knowledge Store application, which will automatically connect to your running Qdrant instance.
 
+---
 ## Brief Write-up
+---
 - Its command-line interface (CLI) based AI Coach.
 - The core innovation lies in its robust knowledge management system, which dynamically collects, stores, and embeds user-specific information to enhance the AI's contextual understanding and response generation.
 
