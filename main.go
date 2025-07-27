@@ -25,33 +25,34 @@ func main() {
 		log.Fatal(err)
 	}
 
-	chat_client := chatclient.New(
+	knowledge := knowledge.New(ctx, gClient, chatclient.New(
 		ctx,
 		gClient,
 		"gemini-2.0-flash",
 		0.5,
 		SYSTEM_PROMPT,
-	)
+	))
 
-	extractor_chat_client := chatclient.New(
-		ctx,
-		gClient,
-		"gemini-2.0-flash",
-		0.5,
-		SYSTEM_PROMPT,
+	uploader := docUpload.New(
+		chatclient.New(
+			ctx,
+			gClient,
+			"gemini-2.0-flash",
+			0.5,
+			SYSTEM_PROMPT,
+		),
+		knowledge,
 	)
-
-	uploader_chat_client := chatclient.New(
-		ctx,
-		gClient,
-		"gemini-2.0-flash",
-		0.5,
-		SYSTEM_PROMPT,
+	cli := cli.New(
+		chatclient.New(
+			ctx,
+			gClient,
+			"gemini-2.0-flash",
+			0.5,
+			SYSTEM_PROMPT,
+		),
+		uploader,
+		knowledge,
 	)
-
-	store := knowledge.NewStore(ctx, gClient)
-	extractor := knowledge.NewExtractor(extractor_chat_client)
-	uploader := docUpload.New(uploader_chat_client, store, extractor)
-	cli := cli.New(chat_client, uploader, store, extractor)
 	cli.Run()
 }

@@ -29,9 +29,8 @@ type CLI struct {
 	chat      *chatclient.ChatClient
 	reader    *bufio.Reader
 	commands  map[string]Command
-	Uploader  *docUpload.Uploader
-	Store     *knowledge.Store
-	Extractor *knowledge.Extractor
+	uploader  *docUpload.Uploader
+	knowledge *knowledge.Knowledge
 }
 
 type Command struct {
@@ -39,7 +38,7 @@ type Command struct {
 	Action func(*CLI)
 }
 
-func New(chat *chatclient.ChatClient, uploader *docUpload.Uploader, store *knowledge.Store, extractor *knowledge.Extractor) *CLI {
+func New(c *chatclient.ChatClient, u *docUpload.Uploader, k *knowledge.Knowledge) *CLI {
 	commands := map[string]Command{
 		".exit": {
 			Desc: "Exit the application",
@@ -67,12 +66,11 @@ func New(chat *chatclient.ChatClient, uploader *docUpload.Uploader, store *knowl
 		},
 	}
 	return &CLI{
-		chat:      chat,
+		chat:      c,
+		uploader:  u,
+		knowledge: k,
 		commands:  commands,
 		reader:    bufio.NewReader(os.Stdin),
-		Uploader:  uploader,
-		Store:     store,
-		Extractor: extractor,
 	}
 }
 
@@ -94,7 +92,7 @@ func (c *CLI) Run() {
 			c.handleCommand(input)
 		} else {
 			c.simpleChat(input)
-			c.addInputToKnowledge(input)
+			c.knowledge.AddInputToKnowledge(input)
 		}
 
 	}
@@ -147,7 +145,7 @@ func (c *CLI) UploadAndReviewDoc() {
 	defer done()
 
 	file_name = strings.TrimSpace(file_name)
-	res := c.Uploader.UploadAndReviewDoc(file_name)
+	res := c.uploader.UploadAndReviewDoc(file_name)
 
 	fmt.Println(Colored("📋 Review Results:", Blue, Underline))
 	fmt.Println(res)
@@ -217,14 +215,7 @@ func (c *CLI) ShowSpinner(ctx context.Context, msg string) {
 		}
 	}()
 }
-
-func (c *CLI) addInputToKnowledge(input string) {
-	chunks := c.Extractor.ExtractFromUserInput(input)
-	if chunks != nil {
-		c.Store.AddKnowledge(*chunks)
-	}
-}
-
+ 
 func (_ *CLI) Exit() {
 	fmt.Print("Good Bye")
 	os.Exit(0)

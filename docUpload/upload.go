@@ -13,16 +13,14 @@ import (
 type Uploader struct {
 	chat      *chatclient.ChatClient
 	prompt    *prompts.PromptTemplate
-	Store     *knowledge.Store
-	Extractor *knowledge.Extractor
+	knowledge *knowledge.Knowledge
 }
 
-func New(c *chatclient.ChatClient, store *knowledge.Store, extractor *knowledge.Extractor) *Uploader {
+func New(c *chatclient.ChatClient, kg *knowledge.Knowledge) *Uploader {
 	return &Uploader{
-		chat:   c,
-		prompt: &promptStore.BusinessReviewPrompt,
-		Store: store,
-		Extractor: extractor,
+		chat:      c,
+		prompt:    &promptStore.BusinessReviewPrompt,
+		knowledge: kg,
 	}
 }
 
@@ -39,16 +37,11 @@ func (r *Uploader) UploadAndReviewDoc(file_name string) string {
 		"file_name": file_name,
 	})
 
-	r.addInputToKnowledge(string(content))
+	r.knowledge.AddInputToKnowledge(string(content))
 
 	if err != nil {
 		log.Fatal(err)
 	}
 	res := r.chat.SendMessage(msg)
 	return res
-}
-
-func (r *Uploader) addInputToKnowledge(input string) {
-	chunks := r.Extractor.ExtractFromUserInput(input)
-	r.Store.AddKnowledge(*chunks)
 }
