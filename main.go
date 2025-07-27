@@ -1,21 +1,38 @@
 package main
-import(
-	"fmt"
+
+import (
+	"context"
 	"log"
-	"starter/greeting"
+	chatclient "starter/go_starter/chatClient"
+	"starter/go_starter/cli"
+
+	"github.com/joho/godotenv"
+	"google.golang.org/genai"
 )
 
-func main(){
-	log.SetPrefix("greeting => ")
-	log.SetFlags(0)
+const (
+	TEMPERATURE   = 0.5
+	SYSTEM_PROMPT = "You are Bilbo Baggens from middle earth. limit your response 10 words max"
+	MODEL         = "gemini-2.0-flash"
+)
 
+func main() {
+	godotenv.Load()
+	ctx := context.Background()
 
-	// name := "jo"
-	name := ""
-	msg, err := greeting.Say_hello(name)
-	if err != nil{
+	gClient, err := genai.NewClient(ctx, nil)
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(msg)
+	chat_client := chatclient.New(
+		ctx,
+		gClient,
+		MODEL,
+		TEMPERATURE,
+		SYSTEM_PROMPT,
+	)
+
+	cli := cli.New(chat_client)
+	cli.Run()
 }
