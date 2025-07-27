@@ -11,6 +11,7 @@ import (
 	"starter/go_starter/chatClient"
 	"starter/go_starter/docUpload"
 	"starter/go_starter/knowledge"
+	"starter/go_starter/promptStore"
 	"strconv"
 	"strings"
 	"time"
@@ -38,7 +39,11 @@ type Command struct {
 	Action func(*CLI)
 }
 
-func New(c *chatclient.ChatClient, u *docUpload.Uploader, k *knowledge.Knowledge) *CLI {
+func New(
+	c *chatclient.ChatClient,
+	u *docUpload.Uploader,
+	k *knowledge.Knowledge,
+) *CLI {
 	commands := map[string]Command{
 		".exit": {
 			Desc: "Exit the application",
@@ -78,6 +83,8 @@ func (c *CLI) Run() {
 	c.printWelcome()
 	c.PrintHelp()
 
+	c.welcomeUser()
+
 	for {
 		fmt.Print(Colored("you >  ", Blue))
 		input, err := c.reader.ReadString('\n')
@@ -91,21 +98,35 @@ func (c *CLI) Run() {
 		if strings.HasPrefix(input, CommandPrefix) {
 			c.handleCommand(input)
 		} else {
-			input_embbeded := c.knowledge.EmbbedAdditonalKnowledge(input)
-			c.simpleChat(input_embbeded)
-			c.knowledge.AddInputToKnowledge(input)
+			c.simpleChat(input, true)
 		}
 
 	}
 }
 
-func (c *CLI) simpleChat(input string) {
+func (c *CLI) simpleChat(input string, use_knowledge bool) {
 	ctx, done := context.WithCancel(c.chat.Ctx)
 	c.ShowSpinner(ctx, Colored("🚀 generating...", Green))
 	defer done()
 
+
+	if use_knowledge == true{
+		c.knowledge.AddInputToKnowledge(input)
+		input = c.knowledge.EmbbedAdditonalKnowledge(input)
+	}
 	res := c.chat.SendMessage(input)
-	fmt.Println(Colored("model> ", Green), res)
+	fmt.Println(Colored("Anna> ", Green), res)
+}
+
+func (c *CLI) welcomeUser() {
+	if c.knowledge.Store.IsUserFirstTime() {
+		p, _ := promptStore.AnnaOnboardingPrompt.Prompt.Format(
+			map[string]any{},
+		)
+		c.simpleChat(p, false)
+	} else {
+		c.simpleChat("hi", false)
+	}
 }
 
 func (c *CLI) handleCommand(input string) {
@@ -216,7 +237,7 @@ func (c *CLI) ShowSpinner(ctx context.Context, msg string) {
 		}
 	}()
 }
- 
+
 func (_ *CLI) Exit() {
 	fmt.Print("Good Bye")
 	os.Exit(0)

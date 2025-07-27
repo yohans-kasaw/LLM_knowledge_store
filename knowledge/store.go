@@ -90,7 +90,7 @@ func (s *Store) AddKnowledge(sentences []string) error {
 		}
 	}
 
-	_ , err = s.qdrantClient.Upsert(s.ctx, &qdrant.UpsertPoints{
+	_, err = s.qdrantClient.Upsert(s.ctx, &qdrant.UpsertPoints{
 		CollectionName: COLLECTION_NAME,
 		Points:         points,
 	})
@@ -139,7 +139,7 @@ func (s *Store) ensureCollection() error {
 	}
 
 	if slices.Contains(collections, COLLECTION_NAME) {
-		return nil // Or handle as per your application logic
+		return nil
 	}
 
 	err = s.qdrantClient.CreateCollection(s.ctx, &qdrant.CreateCollection{
@@ -220,4 +220,18 @@ func TestStore() {
 	for i, sentence := range retrievedSentences2 {
 		fmt.Printf("%d. %s\n", i+1, sentence)
 	}
+}
+
+func (s *Store) IsUserFirstTime() bool {
+	collections, err := s.qdrantClient.ListCollections(s.ctx)
+
+	if err == nil {
+		return false 
+	}
+
+	if !slices.Contains(collections, COLLECTION_NAME) {
+		return false
+	}
+
+	return true
 }
