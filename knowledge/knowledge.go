@@ -176,7 +176,7 @@ func extractSentencesFromScoredPoints(points []*qdrant.ScoredPoint) []string {
 	return sentences
 }
 
-func Test() {
+func TestStore() {
 	godotenv.Load()
 
 	ctx := context.Background()

@@ -2,18 +2,15 @@ package main
 
 import (
 	"context"
+	"github.com/joho/godotenv"
+	"google.golang.org/genai"
 	"log"
 	chatclient "starter/go_starter/chatClient"
 	"starter/go_starter/cli"
-
-	"github.com/joho/godotenv"
-	"google.golang.org/genai"
 )
 
 const (
-	TEMPERATURE   = 0.5
 	SYSTEM_PROMPT = "You are Bilbo Baggens from middle earth. limit your response 10 words max"
-	MODEL         = "gemini-2.0-flash"
 )
 
 func main() {
@@ -28,8 +25,8 @@ func main() {
 	chat_client := chatclient.New(
 		ctx,
 		gClient,
-		MODEL,
-		TEMPERATURE,
+		"gemini-2.0-flash",
+		0.5,
 		SYSTEM_PROMPT,
 	)
 
