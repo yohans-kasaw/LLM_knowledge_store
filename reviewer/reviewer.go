@@ -1,7 +1,6 @@
 package reviewer
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"starter/go_starter/chatClient"
@@ -37,7 +36,7 @@ func (r *Reviewer) ReviewDoc(file_name string) string {
 	// open the file here and send it as a doc
 	content, err := os.ReadFile(file_name)
 	if err != nil{
-		fmt.Printf("err opening file please try again %v\n", err)
+		log.Printf("err opening file please try again %v\n", err)
 		return ""
 	}
 

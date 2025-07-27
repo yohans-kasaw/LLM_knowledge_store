@@ -27,7 +27,6 @@ type Extractor struct {
 }
 
 func NewExtractor(chatClient *chatclient.ChatClient) *Extractor {
-
 	return &Extractor{
 		chat:   chatClient,
 		prompt: &promptStore.KnowledgeExtractionPrompt,
@@ -37,29 +36,23 @@ func NewExtractor(chatClient *chatclient.ChatClient) *Extractor {
 func (e *Extractor) ExtractFromUserInput(input string) *[]string {
 	filteredInput := heuristicFilter(input)
 	if filteredInput == "" {
-		log.Println("User input discarded by heuristic filter (too short or empty).")
 		return nil
 	}
 
 	chunks, err := e.processWithGenAI(filteredInput)
 	if err != nil {
-		log.Printf("failed to process user input with GenAI: %e\n", err)
 		return nil
 	}
 
 	if len(chunks) > 0 {
-		log.Printf("Successfully extracted and stored %d knowledge chunks from user input.", len(chunks))
 		return &chunks
 	} else {
-		log.Println("No useful knowledge chunks extracted from user input.")
+		return nil
 	}
-
-	return nil
 }
 
 func heuristicFilter(text string) string {
 	sentences := splitIntoSentences(text)
-	fmt.Println("extracted sentences", sentences)
 	var filteredSentences []string
 	for _, s := range sentences {
 		wordCount := len(strings.Fields(s))
@@ -110,8 +103,6 @@ func extractChunks(response string) []string {
 
 	err := json.Unmarshal([]byte(cleanResponse), &wrapper)
 	if err != nil {
-		fmt.Printf("Error unmarshaling JSON: %v\n", err)
-		fmt.Printf("Attempted to unmarshal: %s\n", cleanResponse)
 		return []string{}
 	}
 	return wrapper.Data

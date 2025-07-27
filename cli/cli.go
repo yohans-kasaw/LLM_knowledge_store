@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"starter/go_starter/chatClient"
+	"starter/go_starter/knowledge"
 	"starter/go_starter/reviewer"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ const CommandPrefix = "."
 
 type CLI struct {
 	chat     *chatclient.ChatClient
+	Store *knowledge.Store
+	Extractor *knowledge.Extractor
 	reader   *bufio.Reader
 	commands map[string]Command
 }
@@ -35,7 +38,7 @@ type Command struct {
 	Action func(*CLI)
 }
 
-func New(chat *chatclient.ChatClient) *CLI {
+func New(chat *chatclient.ChatClient, store *knowledge.Store, extractor *knowledge.Extractor) *CLI {
 	commands := map[string]Command{
 		".exit": {
 			Desc: "Exit the application",
@@ -66,6 +69,8 @@ func New(chat *chatclient.ChatClient) *CLI {
 		chat:     chat,
 		commands: commands,
 		reader:   bufio.NewReader(os.Stdin),
+		Store: store,
+		Extractor: extractor,
 	}
 }
 
@@ -87,6 +92,7 @@ func (c *CLI) Run() {
 			c.handleCommand(input)
 		} else {
 			c.simpleChat(input)
+			go c.addInputToKnowledge(input)
 		}
 
 	}
@@ -210,6 +216,13 @@ func (c *CLI) ShowSpinner(ctx context.Context, msg string) {
 		}
 	}()
 }
+
+
+func (c *CLI) addInputToKnowledge(input string){
+	chunks := c.Extractor.ExtractFromUserInput(input)
+	c.Store.AddKnowledge(*chunks)
+}
+
 
 func (_ *CLI) Exit() {
 	fmt.Print("Good Bye")

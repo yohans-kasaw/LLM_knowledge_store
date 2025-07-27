@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/joho/godotenv"
-	"google.golang.org/genai"
 	"log"
 	chatclient "starter/go_starter/chatClient"
 	"starter/go_starter/cli"
+	"starter/go_starter/knowledge"
+
+	"github.com/joho/godotenv"
+	"google.golang.org/genai"
 )
 
 const (
@@ -30,6 +32,9 @@ func main() {
 		SYSTEM_PROMPT,
 	)
 
-	cli := cli.New(chat_client)
+	store := knowledge.NewStore(ctx, gClient)
+	extractor := knowledge.NewExtractor(chat_client)
+
+	cli := cli.New(chat_client, store, extractor)
 	cli.Run()
 }

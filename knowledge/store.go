@@ -14,46 +14,45 @@ import (
 
 const (
 	EMBED_MODEL      = "gemini-embedding-001"
-	COLLECTION_NAME  = "rag_knowledge_store_test_2"
-	VECTOR_DIMENSION =  3072
+	COLLECTION_NAME  = "rag_knowledge_store_test_3"
+	VECTOR_DIMENSION = 3072
 )
 
-type KnowledgeStore interface {
-	AddKnowledge(ctx context.Context, sentences []string) error
-	RetrieveKnowledge(ctx context.Context, query string, topK *uint64) ([]string, error)
-}
-
-type QdrantKnowledgeStore struct {
+type Store struct {
 	qdrantClient *qdrant.Client
 	genaiClient  *genai.Client
+	ctx          context.Context
 }
 
-func NewQdrantKnowledgeStore(ctx context.Context, gClient *genai.Client) (*QdrantKnowledgeStore, error) {
+func NewStore(ctx context.Context, gClient *genai.Client) *Store {
 	qClient, err := qdrant.NewClient(&qdrant.Config{
 		Host: "localhost",
 		Port: 6334,
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Qdrant client: %w", err)
+		log.Panicf("failed to create Qdrant client: %w", err)
+		return nil
 	}
 
-	store := &QdrantKnowledgeStore{
+	store := &Store{
 		qdrantClient: qClient,
 		genaiClient:  gClient,
+		ctx:          ctx,
 	}
 
-	err = store.ensureCollection(ctx)
+	err = store.ensureCollection()
 	if err != nil {
-		return nil, fmt.Errorf("failed to ensure Qdrant collection: %w", err)
+		log.Panicf("failed to ensure Qdrant collection: %w", err)
+		return nil
 	}
 
-	return store, nil
+	return store
 }
 
-func (s *QdrantKnowledgeStore) AddKnowledge(ctx context.Context, sentences []string) error {
+func (s *Store) AddKnowledge(sentences []string) error {
 	if len(sentences) == 0 {
-		return nil 
+		return nil
 	}
 
 	var content []*genai.Content
@@ -65,7 +64,7 @@ func (s *QdrantKnowledgeStore) AddKnowledge(ctx context.Context, sentences []str
 	}
 
 	result, err := s.genaiClient.Models.EmbedContent(
-		ctx,
+		s.ctx,
 		EMBED_MODEL,
 		content,
 		nil,
@@ -83,7 +82,7 @@ func (s *QdrantKnowledgeStore) AddKnowledge(ctx context.Context, sentences []str
 	for i := range sentences {
 		uuidV4 := uuid.New()
 		points[i] = &qdrant.PointStruct{
-			Id:      qdrant.NewIDUUID(uuidV4.String()), 
+			Id:      qdrant.NewIDUUID(uuidV4.String()),
 			Vectors: qdrant.NewVectors(result.Embeddings[i].Values...),
 			Payload: qdrant.NewValueMap(map[string]any{
 				"text": sentences[i],
@@ -91,7 +90,7 @@ func (s *QdrantKnowledgeStore) AddKnowledge(ctx context.Context, sentences []str
 		}
 	}
 
-	opInfo, err := s.qdrantClient.Upsert(ctx, &qdrant.UpsertPoints{
+	_ , err = s.qdrantClient.Upsert(s.ctx, &qdrant.UpsertPoints{
 		CollectionName: COLLECTION_NAME,
 		Points:         points,
 	})
@@ -99,17 +98,14 @@ func (s *QdrantKnowledgeStore) AddKnowledge(ctx context.Context, sentences []str
 	if err != nil {
 		return fmt.Errorf("failed to upsert points to Qdrant: %w", err)
 	}
-
-	log.Printf("Upsert operation info: Status = %v, Operation ID = %d", opInfo.GetStatus(), opInfo.GetOperationId())
-
 	return nil
 }
 
-func (s *QdrantKnowledgeStore) RetrieveKnowledge(ctx context.Context, query string, topK *uint64) ([]string, error) {
+func (s *Store) RetrieveKnowledge(query string, topK *uint64) ([]string, error) {
 	queryContent := []*genai.Content{genai.NewContentFromText(query, genai.RoleUser)}
 
 	queryEmbeddingResult, err := s.genaiClient.Models.EmbedContent(
-		ctx,
+		s.ctx,
 		EMBED_MODEL,
 		queryContent,
 		nil,
@@ -123,7 +119,7 @@ func (s *QdrantKnowledgeStore) RetrieveKnowledge(ctx context.Context, query stri
 		return nil, fmt.Errorf("no embedding generated for the query")
 	}
 
-	searchResult, err := s.qdrantClient.Query(ctx, &qdrant.QueryPoints{
+	searchResult, err := s.qdrantClient.Query(s.ctx, &qdrant.QueryPoints{
 		CollectionName: COLLECTION_NAME,
 		Query:          qdrant.NewQuery(queryEmbeddingResult.Embeddings[0].Values...),
 		WithPayload:    qdrant.NewWithPayload(true),
@@ -136,19 +132,17 @@ func (s *QdrantKnowledgeStore) RetrieveKnowledge(ctx context.Context, query stri
 	return extractSentencesFromScoredPoints(searchResult), nil
 }
 
-func (s *QdrantKnowledgeStore) ensureCollection(ctx context.Context) error {
-	collections, err := s.qdrantClient.ListCollections(ctx)
+func (s *Store) ensureCollection() error {
+	collections, err := s.qdrantClient.ListCollections(s.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list Qdrant collections: %w", err)
 	}
 
 	if slices.Contains(collections, COLLECTION_NAME) {
-		log.Printf("Collection '%s' already exists.", COLLECTION_NAME)
 		return nil // Or handle as per your application logic
 	}
 
-	log.Printf("Collection '%s' not found. Creating...", COLLECTION_NAME)
-	err = s.qdrantClient.CreateCollection(ctx, &qdrant.CreateCollection{
+	err = s.qdrantClient.CreateCollection(s.ctx, &qdrant.CreateCollection{
 		CollectionName: COLLECTION_NAME,
 		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
 			Size:     uint64(VECTOR_DIMENSION),
@@ -158,7 +152,6 @@ func (s *QdrantKnowledgeStore) ensureCollection(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create collection '%s': %w", COLLECTION_NAME, err)
 	}
-	log.Printf("Collection '%s' created successfully.", COLLECTION_NAME)
 	return nil
 }
 
@@ -182,7 +175,7 @@ func TestStore() {
 	ctx := context.Background()
 	gClient, err := genai.NewClient(ctx, nil)
 
-	store, err := NewQdrantKnowledgeStore(ctx, gClient)
+	store := NewStore(ctx, gClient)
 	if err != nil {
 		log.Fatalf("Failed to create knowledge store: %v", err)
 	}
@@ -194,7 +187,7 @@ func TestStore() {
 		"Retrieval Augmented Generation combines retrieval with language models.",
 		"The sun rises in the east and sets in the west.",
 	}
-	err = store.AddKnowledge(ctx, sentencesToAdd)
+	err = store.AddKnowledge(sentencesToAdd)
 	if err != nil {
 		log.Fatalf("Failed to add knowledge: %v", err)
 	}
@@ -203,7 +196,7 @@ func TestStore() {
 	// 2. Retrieve Knowledge
 	query := "What is RAG?"
 	topK := uint64(4)
-	retrievedSentences, err := store.RetrieveKnowledge(ctx, query, &topK)
+	retrievedSentences, err := store.RetrieveKnowledge(query, &topK)
 	if err != nil {
 		log.Fatalf("Failed to retrieve knowledge: %v", err)
 	}
@@ -217,7 +210,7 @@ func TestStore() {
 	query2 := "brown fox jumps over what?"
 
 	topK = uint64(1)
-	retrievedSentences2, err := store.RetrieveKnowledge(ctx, query2, &topK)
+	retrievedSentences2, err := store.RetrieveKnowledge(query2, &topK)
 	if err != nil {
 		log.Fatalf("Failed to retrieve knowledge: %v", err)
 	}
