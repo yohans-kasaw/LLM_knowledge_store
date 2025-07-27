@@ -66,48 +66,49 @@ This command will start the LLM Knowledge Store application, which will automati
 
 #### Architecture Overview
 
-    Frontend (CLI):
-        Handles user interaction, input/output, command parsing (for example, .exit, .help, .upload), and displays AI responses and progress. It manages conversational flow and interfaces with core AI and knowledge components.
+Frontend (CLI): Handles user interaction, input/output, command parsing (for example, .exit, .help, .upload), and displays AI responses and progress. It manages conversational flow and interfaces with core AI and knowledge components.
 
-    Backend/Core Logic
-        chatclient -  Wraps the Google Generative AI (Gemini) API, initializing the chat model with the "Anna" persona and managing message sending and response retrieval.
+Backend/Core Logic
+* chatclient -  Wraps the Google Generative AI (Gemini) API, initializing the chat model with the "Anna" persona and managing message sending and response retrieval.
 
-        knowledge - This central component manages dynamic knowledge integration.
+* knowledge - This central component manages dynamic knowledge integration.
 
-            Extractor Uses a separate chatclient to extract key knowledge points from user inputs (questions, discussions, uploaded documents), processing text into manageable chunks for storage.
+    * Extractor Uses a separate chatclient to extract key knowledge points from user inputs (questions, discussions, uploaded documents), processing text into manageable chunks for storage.
 
-            Store Manages persistence and retrieval of extracted knowledge, using Qdrant (a vector database) for efficient storage and similarity search of embeddings, and the Google GenAI embedding model for creating these.
+    * Store Manages persistence and retrieval of extracted knowledge, using Qdrant (a vector database) for efficient storage and similarity search of embeddings, and the Google GenAI embedding model for creating these.
 
-        docUpload - Enables document uploads and reviews, leveraging the knowledge system to extract and store information, and using a dedicated prompt for structured review.
+* docUpload - Enables document uploads and reviews, leveraging the knowledge system to extract and store information, and using a dedicated prompt for structured review.
 
-        promptStore - Centralizes and manages all system prompts, personas (for example, AnnaSystemPrompt), and prompt templates (for example, KnowledgeExtractionPrompt) used across the application for consistency.
+* promptStore - Centralizes and manages all system prompts, personas (for example, AnnaSystemPrompt), and prompt templates (for example, KnowledgeExtractionPrompt) used across the application for consistency.
 
 The flow begins with the main package setting up clients and services. User input first goes to knowledge.AddInputToKnowledge for extraction and storage. For general queries, the input is augmented with retrieved relevant knowledge before being sent to the LLM via chatclient.SendMessage.
 
 #### Design Decisions and Trade-offs
+* Knowledge-Centric Approach: The primary design focuses on proactively extracting, embedding, and retrieving relevant data for every query, significantly enhancing the LLM's ability to provide personalized and contextually accurate responses. This introduces increased latency due to extra API calls for embedding and vector database lookups, and adds architectural complexity.
 
-    Knowledge-Centric Approach: The primary design focuses on proactively extracting, embedding, and retrieving relevant data for every query, significantly enhancing the LLM's ability to provide personalized and contextually accurate responses. This introduces increased latency due to extra API calls for embedding and vector database lookups, and adds architectural complexity.
+* Separate Knowledge Extraction: LLM A dedicated Extractor component with its own chatclient is used for knowledge extraction, rather than the main conversational LLM. This increases LLM API calls, potentially leading to higher costs and more latency for initial extraction, but keeps the main conversational flow lean and focused.
 
-    Separate Knowledge Extraction: LLM A dedicated Extractor component with its own chatclient is used for knowledge extraction, rather than the main conversational LLM. This increases LLM API calls, potentially leading to higher costs and more latency for initial extraction, but keeps the main conversational flow lean and focused.
+* Qdrant for Vector Storage: Qdrant was chosen for its performance in similarity search and ease of Go integration. This requires a separate Qdrant instance and introduces a newer technology; PostgreSQL might have been a more mature alternative.
 
-    Qdrant for Vector Storage: Qdrant was chosen for its performance in similarity search and ease of Go integration. This requires a separate Qdrant instance and introduces a newer technology; PostgreSQL might have been a more mature alternative.
-
-    Generative AI (Gemini): for Embeddings and Chat Leveraging the Google Generative AI suite offers powerful models for conversation and high-quality text embeddings. This creates a dependency on a specific cloud provider and incurs associated API costs, with performance influenced by API rate limits and network latency.
+* Generative AI (Gemini): for Embeddings and Chat Leveraging the Google Generative AI suite offers powerful models for conversation and high-quality text embeddings. This creates a dependency on a specific cloud provider and incurs associated API costs, with performance influenced by API rate limits and network latency.
 
 
 #### Ideas for Improvement if I Had More Time
-Periodically summarize dense knowledge chunks and user histories for more efficient retrieval and a better signal-to-noise ratio.
+* Periodically summarize dense knowledge chunks and user histories for more efficient retrieval and a better signal-to-noise ratio.
 
-Utilize smaller local embedding models and experiment with vector quantization and varying dimensions to reduce API calls, latency, and storage.
+* Utilize smaller local embedding models and experiment with vector quantization and varying dimensions to reduce API calls, latency, and storage.
 
-Employ Go's concurrency for parallelizing embedding generation and database operations, especially with large datasets.
+* Employ Go's concurrency for parallelizing embedding generation and database operations, especially with large datasets.
 
-Introduce multiple AI personas (e.g., Legal, Marketing) that can be switched or inferred, each with tailored prompts and knowledge.
+* Introduce multiple AI personas (e.g., Legal, Marketing) that can be switched or inferred, each with tailored prompts and knowledge.
 
-Guide users through complex tasks by breaking them into smaller, guided sub-tasks.
+* Guide users through complex tasks by breaking them into smaller, guided sub-tasks.
 
-Enhance the AI's ability to ask clarifying questions when user queries are vague.
+* Enhance the AI's ability to ask clarifying questions when user queries are vague.
 
-Improve PDF uploading to parse complex documents and extract information based on user-defined guidelines.
+* Improve PDF uploading to parse complex documents and extract information based on user-defined guidelines.
 
-Offer a transparent interface for users to view, search, and manage their stored knowledge.
+* Offer a transparent interface for users to view, search, and manage their stored knowledge.
+
+
+#### I had too many idea, but only ten fingers :)
