@@ -2,7 +2,10 @@ package knowledge
 
 import (
 	"context"
+	"fmt"
 	chatclient "starter/go_starter/chatClient"
+	"starter/go_starter/promptStore"
+	"strings"
 
 	"google.golang.org/genai"
 )
@@ -28,4 +31,33 @@ func (k *Knowledge) AddInputToKnowledge(input string) {
 	if chunks != nil {
 		k.Store.AddKnowledge(*chunks)
 	}
+}
+
+func (k *Knowledge) EmbbedAdditonalKnowledge(input string) string {
+	topK := uint64(4)
+	retrievedKnowledge, err := k.Store.RetrieveKnowledge(input, &topK)
+	if err != nil {
+		return input
+	}
+
+	if len(retrievedKnowledge) == 0 {
+		return input
+	}
+
+	var knowledgePointsBuilder strings.Builder
+	for i, sentence := range retrievedKnowledge {
+		knowledgePointsBuilder.WriteString(fmt.Sprintf("Knowledge Point %d: %s\n", i+1, sentence))
+	}
+
+	formattedPrompt, err := promptStore.KnowledgeEmbeddingPrompt.Format(
+		map[string]any{
+			"retrieved_knowledge": knowledgePointsBuilder.String(),
+			"user_query":          input,
+		},
+	)
+	if err != nil {
+		return input
+	}
+
+	return formattedPrompt
 }

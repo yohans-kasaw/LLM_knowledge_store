@@ -91,7 +91,8 @@ func (c *CLI) Run() {
 		if strings.HasPrefix(input, CommandPrefix) {
 			c.handleCommand(input)
 		} else {
-			c.simpleChat(input)
+			input_embbeded := c.knowledge.EmbbedAdditonalKnowledge(input)
+			c.simpleChat(input_embbeded)
 			c.knowledge.AddInputToKnowledge(input)
 		}
 
