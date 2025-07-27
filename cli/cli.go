@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"starter/go_starter/chatClient"
+	"starter/go_starter/docUpload"
 	"starter/go_starter/knowledge"
-	"starter/go_starter/reviewer"
 	"strconv"
 	"strings"
 	"time"
@@ -26,11 +26,12 @@ const colorReset = "\033[0m"
 const CommandPrefix = "."
 
 type CLI struct {
-	chat     *chatclient.ChatClient
-	Store *knowledge.Store
+	chat      *chatclient.ChatClient
+	reader    *bufio.Reader
+	commands  map[string]Command
+	Uploader  *docUpload.Uploader
+	Store     *knowledge.Store
 	Extractor *knowledge.Extractor
-	reader   *bufio.Reader
-	commands map[string]Command
 }
 
 type Command struct {
@@ -38,7 +39,7 @@ type Command struct {
 	Action func(*CLI)
 }
 
-func New(chat *chatclient.ChatClient, store *knowledge.Store, extractor *knowledge.Extractor) *CLI {
+func New(chat *chatclient.ChatClient, uploader *docUpload.Uploader, store *knowledge.Store, extractor *knowledge.Extractor) *CLI {
 	commands := map[string]Command{
 		".exit": {
 			Desc: "Exit the application",
@@ -58,18 +59,19 @@ func New(chat *chatclient.ChatClient, store *knowledge.Store, extractor *knowled
 				c.PrintHistory()
 			},
 		},
-		".reviewer": {
+		".upload": {
 			Desc: "Get a doc review",
 			Action: func(c *CLI) {
-				c.ReviewDoc()
+				c.UploadAndReviewDoc()
 			},
 		},
 	}
 	return &CLI{
-		chat:     chat,
-		commands: commands,
-		reader:   bufio.NewReader(os.Stdin),
-		Store: store,
+		chat:      chat,
+		commands:  commands,
+		reader:    bufio.NewReader(os.Stdin),
+		Uploader:  uploader,
+		Store:     store,
 		Extractor: extractor,
 	}
 }
@@ -92,7 +94,7 @@ func (c *CLI) Run() {
 			c.handleCommand(input)
 		} else {
 			c.simpleChat(input)
-			go c.addInputToKnowledge(input)
+			c.addInputToKnowledge(input)
 		}
 
 	}
@@ -131,7 +133,7 @@ func (c *CLI) PrintHistory() {
 	fmt.Println("==============================================")
 }
 
-func (c *CLI) ReviewDoc() {
+func (c *CLI) UploadAndReviewDoc() {
 	c.printWelcomeToReview()
 
 	file_name, err := c.GetFileName()
@@ -144,9 +146,8 @@ func (c *CLI) ReviewDoc() {
 	c.ShowSpinner(ctx, Colored("🚀 getting Review...", Green))
 	defer done()
 
-	r := reviewer.New(c.chat)
 	file_name = strings.TrimSpace(file_name)
-	res := r.ReviewDoc(file_name)
+	res := c.Uploader.UploadAndReviewDoc(file_name)
 
 	fmt.Println(Colored("📋 Review Results:", Blue, Underline))
 	fmt.Println(res)
@@ -176,7 +177,7 @@ func (c *CLI) GetFileName() (string, error) {
 func (c *CLI) PrintHelp() {
 
 	keys := make([]string, 0, len(c.commands))
-	for k := range c.commands{
+	for k := range c.commands {
 		keys = append(keys, k)
 	}
 
@@ -217,12 +218,12 @@ func (c *CLI) ShowSpinner(ctx context.Context, msg string) {
 	}()
 }
 
-
-func (c *CLI) addInputToKnowledge(input string){
+func (c *CLI) addInputToKnowledge(input string) {
 	chunks := c.Extractor.ExtractFromUserInput(input)
-	c.Store.AddKnowledge(*chunks)
+	if chunks != nil {
+		c.Store.AddKnowledge(*chunks)
+	}
 }
-
 
 func (_ *CLI) Exit() {
 	fmt.Print("Good Bye")
