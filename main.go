@@ -7,18 +7,17 @@ import (
 	"starter/go_starter/cli"
 	"starter/go_starter/docUpload"
 	"starter/go_starter/knowledge"
+	"starter/go_starter/promptStore"
 
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
 
-const (
-	SYSTEM_PROMPT = "You are Bilbo Baggens from middle earth. limit your response 10 words max"
-)
-
 func main() {
 	godotenv.Load()
 	ctx := context.Background()
+
+	ANNA_SYSTEM_PROMPT, _ := promptStore.AnnaSystemPrompt.Prompt.Format(map[string]any{})
 
 	gClient, err := genai.NewClient(ctx, nil)
 	if err != nil {
@@ -30,7 +29,7 @@ func main() {
 		gClient,
 		"gemini-2.0-flash",
 		0.5,
-		SYSTEM_PROMPT,
+		ANNA_SYSTEM_PROMPT,
 	))
 
 	uploader := docUpload.New(
@@ -39,7 +38,7 @@ func main() {
 			gClient,
 			"gemini-2.0-flash",
 			0.5,
-			SYSTEM_PROMPT,
+			ANNA_SYSTEM_PROMPT,
 		),
 		knowledge,
 	)
@@ -49,7 +48,7 @@ func main() {
 			gClient,
 			"gemini-2.0-flash",
 			0.5,
-			SYSTEM_PROMPT,
+			ANNA_SYSTEM_PROMPT,
 		),
 		uploader,
 		knowledge,
