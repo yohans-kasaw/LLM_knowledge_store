@@ -1,10 +1,10 @@
-# Edventures: LLM Knowledge Store
+## Edventures: LLM Knowledge Store
 
 The main solution in this project is it provides a knowledge store for Large Language Models (LLMs), leveraging **Qdrant** as the vector database.
 
 ---
 
-## Prerequisites
+### Prerequisites
 
 Before you get started, make sure you have the following installed:
 
@@ -13,9 +13,9 @@ Before you get started, make sure you have the following installed:
 
 ---
 
-## Getting Started
+### How to run it
 
-### 1. Start Qdrant Vector Database
+#### 1. Start Qdrant Vector Database
 
 Qdrant is crucial for efficient vector storage and retrieval. The easiest way to get it up and running is by using Docker.
 
@@ -36,19 +36,19 @@ docker run -p 6333:6333 -p 6334:6334 \
     qdrant/qdrant
 ```
 
-    -p 6333:6333: Maps the gRPC port for client communication.
-    -p 6334:6334: Maps the HTTP port for the REST API and web UI.
-    -v "$(echo $HOME)/qdrant_storage:/qdrant/storage:z": Creates a persistent volume at ~/qdrant_storage on your host machine. This means your data won't disappear if the container stops or is removed.
+-p 6333:6333: Maps the gRPC port for client communication.
+-p 6334:6334: Maps the HTTP port for the REST API and web UI.
+-v "$(echo $HOME)/qdrant_storage:/qdrant/storage:z": Creates a persistent volume at ~/qdrant_storage on your host machine. This means your data won't disappear if the container stops or is removed.
 
-3. Environmental Variables
+#### 3. Environmental Variables
 
 Set your GOOGLE_API_KEY environmental variable. You can do this by:
-    Creating a .env file in your root directory and adding GOOGLE_API_KEY=your_key_here
-    Or by exporting it in your terminal: export GOOGLE_API_KEY=your_key_here
+Creating a .env file in your root directory and adding GOOGLE_API_KEY=your_key_here
+Or by exporting it in your terminal: export GOOGLE_API_KEY=your_key_here
 
 have the env file either by create .env file in root director or by exproting it 
 
-2. Run the Application
+#### 2. Run the Application
 
 Once your Qdrant instance is running, navigate to the project's root directory in your terminal and execute the application:
 
@@ -58,9 +58,7 @@ go run .
 
 This command will start the LLM Knowledge Store application, which will automatically connect to your running Qdrant instance.
 
-
-
-## Conversational AI Coach: with Dynamic Knowledge Integration
+## Brief Write-up
 - Its command-line interface (CLI) based AI Coach.
 - The core innovation lies in its robust knowledge management system, which dynamically collects, stores, and embeds user-specific information to enhance the AI's contextual understanding and response generation.
 
